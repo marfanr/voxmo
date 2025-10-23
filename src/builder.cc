@@ -1,9 +1,13 @@
 #include "builder.hh"
 #include "manifest.hh"
+#include "metadata.hh"
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <vector>
+
+#define VOXMO_MAGIC 0x564f584d
 
 Builder::Builder() {}
 
@@ -26,7 +30,7 @@ std::vector<std::string> get_lines(std::vector<char> data) {
   return lines;
 }
 
-void Builder::build(std::string output) {
+void Builder::build(std::string filename) {
 
   // find manifest
   std::shared_ptr<File> manifest = 0;
@@ -47,5 +51,46 @@ void Builder::build(std::string output) {
   std::vector<std::string> lines = get_lines(manifest->data);
   Manifest m(std::move(lines));
 
-  std::cout << "author : " << std::get<std::string>(m["author"]) << std::endl; 
+  // creating output file
+  std::ofstream out(filename, std::ios::out | std::ios::binary);
+  if (!out) {
+    std::cerr << "Failed to open file " << filename << "\n";
+    return;
+  }
+
+  // creating metadata
+  metadata_header header;
+  header.magic = VOXMO_MAGIC;
+  header.version = 1;
+  header.header_len = 0;
+  header.nama_module_len = manifest->path.length();
+  header.header_len = sizeof(header) + header.nama_module_len;
+  out.write((char *)&header, sizeof(header));
+
+  char *nama_module = new char[header.nama_module_len];
+  std::copy(manifest->path.begin(), manifest->path.end(), nama_module);
+  out.write(nama_module, header.nama_module_len);
+  delete[] nama_module;
+
+  for (const auto &f : loader->get_files()) {
+    std::filesystem::path p(f->path);
+    if (p.filename() == "manifest.yaml") {
+      continue;
+    }
+
+    metadata_file mf;
+    mf.size = f->data.size();
+    mf.nama_file_len = mf.nama_file_len =
+        static_cast<uint16_t>(std::string(p.filename()).length());
+    mf.next_offset = sizeof(header) + header.nama_module_len + sizeof(mf) +
+                     mf.nama_file_len + f->data.size();
+    mf.metadata_length = sizeof(mf) + mf.nama_file_len;
+    out.write((char *)&mf, sizeof(mf));
+
+    std::string name_str = p.filename().string();
+    out.write(name_str.data(), name_str.size());
+    mf.nama_file_len = static_cast<uint16_t>(name_str.size());
+
+    out.write(f->data.data(), f->data.size());
+  }
 }

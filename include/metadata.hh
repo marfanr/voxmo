@@ -3,17 +3,18 @@
 
 #include <cstdint>
 struct  metadata_file {
-    uint32_t offset;
+    uint64_t next_offset;
+    uint32_t metadata_length;
     uint32_t size;
     uint16_t nama_file_len;
     // char name[nama_file_len]
 };
 
 struct metadata_header {
-    uint16_t magic;
-    uint16_t nama_module_len;
-    char * name;
+    uint32_t magic;
     uint16_t version;
+    uint32_t header_len;
+    uint16_t nama_module_len;
     // char nama_module[nama_module_len]
 };
 

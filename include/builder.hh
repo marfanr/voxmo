@@ -10,7 +10,7 @@ public:
   Builder();
   ~Builder() = default;
   void add_loader(std::shared_ptr<FileLoader> fl);
-  void build(std::string output);
+  void build(std::string filename);
 
 private:
 std::shared_ptr<FileLoader> loader;
