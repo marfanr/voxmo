@@ -35,36 +35,50 @@ VOXMO menggunakan format file **modular** yang terdiri dari **header**, diikuti 
 
 Header berada di awal file dan berisi informasi modul secara umum.
 
-| Field             | Tipe       | Keterangan                                           |
-| ----------------- | ---------- | ---------------------------------------------------- |
-| `magic`           | `uint32_t` | Magic number file, contohnya `0x564F584D` (`'VOXM'`) |
-| `version`         | `uint16_t` | Versi format VOXMO                                   |
-| `header_len`      | `uint32_t` | Panjang header, termasuk nama modul                  |
-| `nama_module_len` | `uint16_t` | Panjang string nama modul                            |
-| `nama_module`     | char[]     | Nama modul (`nama_module_len` byte)                  |
+| Field         | Tipe              | Keterangan                                             |
+| ------------- | ----------------- | ------------------------------------------------------ |
+| `magic`       | `uint32_t`        | Magic number file, contohnya `0x564F584D` (`'VOXM'`)   |
+| `version`     | `uint16_t`        | Versi format VOXMO                                     |
+| `header_len`  | `uint32_t`        | Panjang header termasuk semua string dan list metadata |
+| `nama_module` | `metadata_string` | Nama modul (`length` dan `data`)                       |
+| `description` | `metadata_string` | Deskripsi modul                                        |
+| `license`     | `metadata_string` | Lisensi modul                                          |
+| `version_str` | `metadata_string` | Versi modul dalam string                               |
+| `author`      | `metadata_string` | Nama penulis                                           |
+| `main_file`   | `metadata_string` | Nama file utama modul                                  |
+| `capability`  | `metadata_list`   | Daftar capability/module yang didukung                 |
 
 **Layout di file (byte order little-endian):**
 
 ```
-[magic][version][header_len][nama_module_len][nama_module]
+[magic][version][header_len]
+[nama_module.length][nama_module.data]
+[description.length][description.data]
+[license.length][license.data]
+[version_str.length][version_str.data]
+[author.length][author.data]
+[main_file.length][main_file.data]
+[capability.count][capability.items...]
 ```
+
+* `metadata_string` terdiri dari 2 byte length diikuti data string (tidak null-terminated).
+* `metadata_list` terdiri dari 2 byte count, diikuti `metadata_string` untuk tiap item.
 
 ## 2. Metadata File (`metadata_file`)
 
-Setiap file dalam modul memiliki metadata yang menyertainya. Metadata memberitahu lokasi file, ukuran, dan nama file.
+Setiap file dalam modul memiliki metadata yang menyertainya:
 
-| Field             | Tipe       | Keterangan                                        |
-| ----------------- | ---------- | ------------------------------------------------- |
-| `next_offset`     | `uint64_t` | Offset file berikutnya relatif terhadap awal file |
-| `metadata_length` | `uint32_t` | Panjang metadata file ini, termasuk nama file     |
-| `size`            | `uint32_t` | Ukuran file (bytes)                               |
-| `nama_file_len`   | `uint16_t` | Panjang nama file                                 |
-| `name`            | char[]     | Nama file (`nama_file_len` byte)                  |
+| Field             | Tipe              | Keterangan                                        |
+| ----------------- | ----------------- | ------------------------------------------------- |
+| `next_offset`     | `uint64_t`        | Offset file berikutnya relatif terhadap awal file |
+| `metadata_length` | `uint32_t`        | Panjang metadata file ini, termasuk nama file     |
+| `size`            | `uint32_t`        | Ukuran file (bytes)                               |
+| `nama_file`       | `metadata_string` | Nama file (`length` dan `data`)                   |
 
 **Layout di file (byte order little-endian):**
 
 ```
-[next_offset][metadata_length][size][nama_file_len][name]
+[next_offset][metadata_length][size][nama_file.length][nama_file.data]
 ```
 
 ## 3. Urutan Data di File VOXMO
@@ -88,5 +102,5 @@ File N
 
 ## 4. Catatan Tambahan
 
-* Semua string (`nama_module` dan `name`) **tidak null-terminated**, panjangnya ditentukan oleh `_len` masing-masing.
-* `magic` digunakan untuk validasi format file saat load.
+* Semua string (`metadata_string.data`) **tidak null-terminated**, panjangnya ditentukan oleh `length`.
+* Magic number digunakan untuk validasi format file saat load.
