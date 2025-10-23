@@ -1,6 +1,5 @@
 # VOXMO
-Kernel Module Packer for voxia
-
+A Utility for Bundling Kernel Modules for the Voxia OS
 ### How To Use
 ```bash 
     mkdir build && cd build
@@ -9,7 +8,7 @@ Kernel Module Packer for voxia
     cmake .. && make
 ```
 ```bash
-    ./voxmo -o {output} {file1} {file2} ...
+    ./voxmo -o {output name}.voxmo {file1} {file2} ...
 ```
 
 file you must included
@@ -26,5 +25,4 @@ main: flui.elf
 
 cap:
   - PCI
-
 ```
