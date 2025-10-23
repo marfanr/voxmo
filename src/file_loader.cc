@@ -1,5 +1,6 @@
 #include "file_loader.hh"
 #include <cstdio>
+#include <cstdlib>
 #include <fcntl.h>
 #include <iomanip>
 #include <iostream>
@@ -27,6 +28,7 @@ std::shared_ptr<File> FileLoader::openFile(std::string path) {
 
   if (fd == -1) {
     std::cerr << "failed to open file " << path << std::endl;
+    std::exit(1);
     return 0;
   }
 #if __linux__
@@ -51,19 +53,17 @@ std::shared_ptr<File> FileLoader::openFileLinux(std::string path, int fd) {
   }
 
   write(fd, data, st.st_size);
-    // read data
-  for (int i = 0; i < 20; i++) {
-     std::cout << std::setw(2) << std::setfill('0') 
-                 << std::hex << static_cast<int>(data[i]) << " ";
-    
-  }
-  std::cout << std::endl;
-
+   
   File file(path, std::vector<char>(data, data + st.st_size));
   munmap(data, st.st_size);
   return std::make_shared<File>(file);
 }
 
-File::File(std::string path, std::vector<char> data) : path(path), data(data) {
 
+std::vector<std::shared_ptr<File>> FileLoader::get_files() {
+  return files;
+}
+
+
+File::File(std::string path, std::vector<char> data) : path(path), data(data) {
 }

@@ -21,6 +21,8 @@ class FileLoader
         FileLoader();
         void add(std::vector<std::string> paths);
         ~FileLoader() = default;
+        std::vector<std::shared_ptr<File>> get_files();
+
 
     private:
         std::shared_ptr<File> openFile(std::string path);

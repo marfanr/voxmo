@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(${PROJECT_NAME}_lib 
   ${CMAKE_SOURCE_DIR}/src/file_loader.cc
   ${CMAKE_SOURCE_DIR}/src/builder.cc
+  ${CMAKE_SOURCE_DIR}/src/manifest.cc
 )
 target_include_directories(${PROJECT_NAME}_lib PRIVATE include)
 

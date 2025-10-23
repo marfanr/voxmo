@@ -1,4 +1,6 @@
+#include "builder.hh"
 #include "file_loader.hh"
+#include <memory>
 #include <string>
 #include <vector>
 #include "metadata.hh"
@@ -24,7 +26,12 @@ int main(int argc, char** argv) {
         output = "out.voxmo";
     }
 
-    FileLoader fl;
-    fl.add(files);
+    std::shared_ptr<FileLoader> fl = std::make_shared<FileLoader>();
+    std::shared_ptr<Builder> builder = std::make_shared<Builder>();
+    builder->add_loader(fl);
+
+    fl->add(files);
+    
+    builder->build(output);
     return 0;
 }
