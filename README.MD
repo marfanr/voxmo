@@ -15,3 +15,16 @@ Kernel Module Packer for voxia
 file you must included
 1.  binary elf
 2.  manifest.yml
+
+### manifest example
+```yml
+name: test
+version: 0.2
+author: mohammad arfan
+
+main: flui.elf
+
+cap:
+  - PCI
+
+```
