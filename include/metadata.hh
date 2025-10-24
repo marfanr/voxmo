@@ -18,6 +18,7 @@ struct metadata_header {
     uint32_t magic;
     uint16_t version;
     uint32_t header_len;
+    uint32_t file_counts;
 
     struct metadata_string nama_module;
     struct metadata_string description;

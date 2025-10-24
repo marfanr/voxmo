@@ -33,6 +33,9 @@ int main(int argc, char **argv) {
   in.read(reinterpret_cast<char *>(&header.version), sizeof(header.version));
   in.read(reinterpret_cast<char *>(&header.header_len),
           sizeof(header.header_len));
+  in.read(reinterpret_cast<char *>(&header.file_counts),
+          sizeof(header.file_counts));
+
 
   if (!in) {
     std::cerr << "Failed to read basic header fields\n";
@@ -43,6 +46,8 @@ int main(int argc, char **argv) {
   std::cout << "Magic: 0x" << std::hex << header.magic << std::dec << "\n";
   std::cout << "Version: " << header.version << "\n";
   std::cout << "Header Length: " << header.header_len << "\n";
+  std::cout << "File Count: " << header.file_counts << "\n";
+
 
   // Baca string-string metadata
   std::cout << "Nama Module: " << read_string(in, header.nama_module) << "\n";

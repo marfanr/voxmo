@@ -117,10 +117,13 @@ void Builder::build(std::string filename) {
   header.magic = VOXMO_MAGIC;
   header.version = 1;
   header.header_len = sizeof(header);
+  header.file_counts = loader->get_files().size() - 1;
+
   write_le(out, header.magic);
   write_le(out, header.version);
   auto header_len_pos = out.tellp();
   write_le(out, header.header_len);
+  write_le(out, header.file_counts);
   
 
   std::string name = std::get<std::string>(m["name"]);
