@@ -20,6 +20,11 @@ add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/src/voxmo.cc)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
+add_executable(dump ${CMAKE_SOURCE_DIR}/src/dump.cc)
+target_link_libraries(dump PRIVATE ${PROJECT_NAME}_lib)
+target_include_directories(dump PRIVATE include)
+
+
 install(TARGETS ${PROJECT_NAME}_lib
         EXPORT ${PROJECT_NAME}Targets
         LIBRARY DESTINATION lib
