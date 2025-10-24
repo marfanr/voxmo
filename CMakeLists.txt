@@ -20,9 +20,9 @@ add_executable(${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/src/voxmo.cc)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
-add_executable(dump ${CMAKE_SOURCE_DIR}/src/dump.cc)
-target_link_libraries(dump PRIVATE ${PROJECT_NAME}_lib)
-target_include_directories(dump PRIVATE include)
+add_executable(voxmo_dump ${CMAKE_SOURCE_DIR}/src/dump.cc)
+target_link_libraries(voxmo_dump PRIVATE ${PROJECT_NAME}_lib)
+target_include_directories(voxmo_dump PRIVATE include)
 
 
 install(TARGETS ${PROJECT_NAME}_lib
@@ -32,6 +32,9 @@ install(TARGETS ${PROJECT_NAME}_lib
         INCLUDES DESTINATION include)
 
 install(TARGETS ${PROJECT_NAME}
+        RUNTIME DESTINATION bin)
+
+install(TARGETS voxmo_dump 
         RUNTIME DESTINATION bin)
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
