@@ -133,13 +133,13 @@ Secara keseluruhan, urutan isi file adalah sebagai berikut:
 +-------------------------+
 | metadata_header         |
 +-------------------------+
-| string data block       |
-+-------------------------+
 | metadata_file #1        |
 +-------------------------+
 | metadata_file #2        |
 +-------------------------+
 | .....                   |
++-------------------------+
+| string data block       |
 +-------------------------+
 | file data #1            |
 +-------------------------+
