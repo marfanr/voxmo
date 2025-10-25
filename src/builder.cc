@@ -162,7 +162,7 @@ void Builder::build(std::string filename) {
     write_string_segment(out, capability[i], string_pos);
   }
 
-  std::vector<uint64_t> next_offset_pos;
+  std::vector<uint64_t> file_offset_pos;
   for (const auto &f : loader->get_files()) {
     std::filesystem::path p(f->path);
     if (p.filename() == "manifest.yaml") {
@@ -174,11 +174,11 @@ void Builder::build(std::string filename) {
     mf.nama_file.length = static_cast<uint16_t>(p.filename().string().size() + 1);
     mf.nama_file.pos = string_pos;
     mf.metadata_length = sizeof(mf);
-    mf.next_offset = header.header_len + mf.metadata_length + mf.size;
+    mf.offset = header.header_len + mf.metadata_length + mf.size;
     
     auto curr_pos = out.tellp();
-    next_offset_pos.push_back(curr_pos);
-    write_le(out, mf.next_offset);
+    file_offset_pos.push_back(curr_pos);
+    write_le(out, mf.offset);
     write_le(out, mf.metadata_length);
     write_le(out, mf.size);
     write_le(out, mf.nama_file.length);
@@ -195,7 +195,7 @@ void Builder::build(std::string filename) {
       continue;
     }
 
-    out.seekp(next_offset_pos[i], std::ios::beg);
+    out.seekp(file_offset_pos[i], std::ios::beg);
     write_le(out, file_pos);
     out.seekp(file_pos, std::ios::beg);
     out.write(f->data.data(), f->data.size());

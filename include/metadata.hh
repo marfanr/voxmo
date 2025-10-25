@@ -31,7 +31,7 @@ struct metadata_header {
 };
 
 struct  metadata_file {
-    uint64_t next_offset;
+    uint64_t offset;
     uint32_t metadata_length;
     uint32_t size;
     struct metadata_string nama_file;

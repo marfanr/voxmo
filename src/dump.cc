@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
   std::cout << "\n=== Files ===\n";
   for(int i = 0; i < header.file_counts; ++i) {
     metadata_file mf;
-    in.read(reinterpret_cast<char *>(&mf.next_offset), sizeof(mf.next_offset));
+    in.read(reinterpret_cast<char *>(&mf.offset), sizeof(mf.offset));
     in.read(reinterpret_cast<char *>(&mf.metadata_length),
             sizeof(mf.metadata_length));
     in.read(reinterpret_cast<char *>(&mf.size), sizeof(mf.size));
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
 
     std::cout << "  - " << read_string(in, mf.nama_file) << "\n";
     std::cout << "    Size: " << mf.size << "\n";
-    std::cout << "    Next Offset: " << mf.next_offset << "\n";
+    std::cout << "    File Offset: " << mf.offset << "\n";
     std::cout << "    Metadata Length: " << mf.metadata_length << "\n";
   }
 
