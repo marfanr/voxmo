@@ -57,37 +57,50 @@ Header berada di awal file dan berisi informasi umum tentang modul.
 | `main_file`     | `metadata_string` | Nama file utama modul                                  |
 | `capability`    | `metadata_list`   | Daftar kemampuan atau modul yang didukung              |
 
-#### Struktur `metadata_string`
+#### Struktur Header
 
-```c
+```cpp
+#ifndef __METADATA_HH__
+#define __METADATA_HH__
+
+#include <cstdint>
+
+#pragma pack(push, 1)
 struct metadata_string {
-    uint16_t length;  // Panjang string (termasuk '\0')
-    uint64_t pos;     // Posisi data string dalam file
+    uint16_t length;
+    uint64_t pos;
 };
-```
 
-String sekarang **selalu diakhiri dengan `\0`** untuk mempermudah parsing tanpa tambahan copy buffer.
-
-#### Struktur `metadata_list`
-
-```c
 struct metadata_list {
-    uint16_t count;              // Jumlah item dalam daftar
-    struct metadata_string *items; // Pointer ke elemen string
+    uint16_t count;
+    struct metadata_string *items;
 };
-```
 
-#### Layout Header di File (Little Endian)
+struct metadata_header {
+    uint32_t magic;
+    uint16_t version;
+    uint32_t header_len;
+    uint32_t file_counts;
 
-```
-[magic][version][header_len][file_counts]
-[nama_module.length][nama_module.pos]
-[description.length][description.pos]
-[license.length][license.pos]
-[version_str.length][version_str.pos]
-[author.length][author.pos]
-[main_file.length][main_file.pos]
-[capability.count][capability.items...]
+    struct metadata_string nama_module;
+    struct metadata_string description;
+    struct metadata_string license;
+    struct metadata_string version_str;
+    struct metadata_string author;
+    struct metadata_string main_file;
+
+    struct metadata_list capability;
+};
+
+struct metadata_file {
+    uint64_t offset;
+    uint32_t metadata_length;
+    uint32_t size;
+    struct metadata_string nama_file;
+};
+
+#pragma pack(pop)
+#endif // __METADATA_HH__
 ```
 
 ---
@@ -98,7 +111,7 @@ Setiap file yang dibundel memiliki metadata-nya sendiri.
 
 | Field             | Tipe              | Keterangan                                        |
 | ----------------- | ----------------- | ------------------------------------------------- |
-| `next_offset`     | `uint64_t`        | Offset ke metadata file berikutnya (0 jika akhir) |
+| `offset`          | `uint64_t`        | Offset ke metadata file berikutnya (0 jika akhir) |
 | `metadata_length` | `uint32_t`        | Panjang metadata (termasuk nama file)             |
 | `size`            | `uint32_t`        | Ukuran isi file dalam byte                        |
 | `nama_file`       | `metadata_string` | Nama file yang disertakan                         |
@@ -106,7 +119,7 @@ Setiap file yang dibundel memiliki metadata-nya sendiri.
 #### Layout di File (Little Endian)
 
 ```
-[next_offset][metadata_length][size]
+[offset][metadata_length][size]
 [nama_file.length][nama_file.pos]
 ```
 
@@ -124,9 +137,11 @@ Secara keseluruhan, urutan isi file adalah sebagai berikut:
 +-------------------------+
 | metadata_file #1        |
 +-------------------------+
-| file data #1            |
-+-------------------------+
 | metadata_file #2        |
++-------------------------+
+| .....                   |
++-------------------------+
+| file data #1            |
 +-------------------------+
 | file data #2            |
 +-------------------------+
@@ -136,22 +151,13 @@ Secara keseluruhan, urutan isi file adalah sebagai berikut:
 
 Keterangan:
 - Header selalu diletakkan di awal.
-- Setiap `metadata_file` diikuti langsung oleh isi file sesuai dengan ukuran (`size`).
-- `next_offset` memungkinkan sistem melompat langsung ke metadata berikutnya tanpa traversal penuh.
+- Semua `metadata_file` diletakkan berurutan sebelum blok data file.
+- Setelah seluruh metadata file, baru diikuti oleh isi file masing-masing sesuai urutan.
+- `offset` menunjukkan posisi metadata file berikutnya untuk navigasi cepat.
 
 ---
 
 ### 4. Catatan Penting
 
 - Semua field numerik disimpan dalam **little-endian**.
-- Semua string diakhiri dengan `\0`, tetapi panjang tetap dihitung di field `length`.
-- Magic number wajib dicek untuk memvalidasi format file sebelum parsing.
-
----
-
-### 5. Nilai Magic
-
-| Field | Nilai | Deskripsi |
-| ------ | ------ | ---------- |
-| `magic` | `0x564F584D` | ASCII: `'VOXM'` |
-| `version` | `1` | Versi pertama format VOXMO |
+- Semua string diakhiri dengan `'
