@@ -174,7 +174,7 @@ void Builder::build(std::string filename) {
     mf.nama_file.length = static_cast<uint16_t>(p.filename().string().size() + 1);
     mf.nama_file.pos = string_pos;
     mf.metadata_length = sizeof(mf);
-    mf.offset = header.header_len + mf.metadata_length + mf.size;
+    mf.offset = 0;
     
     auto curr_pos = out.tellp();
     file_offset_pos.push_back(curr_pos);
@@ -188,6 +188,7 @@ void Builder::build(std::string filename) {
 
   uint64_t file_pos = string_pos;
   auto files = loader->get_files();
+  int file_idx = 0;
   for (int i = 0; i < files.size(); ++i) {
     const auto &f = files[i];
     std::filesystem::path p(f->path);
@@ -195,7 +196,8 @@ void Builder::build(std::string filename) {
       continue;
     }
 
-    out.seekp(file_offset_pos[i], std::ios::beg);
+    
+    out.seekp(file_offset_pos[file_idx++], std::ios::beg);
     write_le(out, file_pos);
     out.seekp(file_pos, std::ios::beg);
     out.write(f->data.data(), f->data.size());
