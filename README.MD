@@ -1,21 +1,24 @@
 # VOXMO
-A Utility for Bundling Kernel Modules for the Voxia OS
-### How To Use
-```bash 
-    mkdir build && cd build
-```
+Utility untuk membundel kernel module dalam satu file biner untuk sistem operasi **Voxia OS**.
+
+---
+
+## Cara Penggunaan
+
 ```bash
-    cmake .. && make
-```
-```bash
-    ./voxmo -o {output name}.voxmo {file1} {file2} ...
+mkdir build && cd build
+cmake .. && make
+./voxmo -o {output_name}.voxmo {file1} {file2} ...
 ```
 
-file you must included
-1.  binary elf
-2.  manifest.yml
+File yang wajib disertakan:
+1. File biner ELF
+2. File `manifest.yml`
 
-### manifest example
+---
+
+## Contoh Manifest
+
 ```yml
 name: test
 version: 0.2
@@ -27,80 +30,128 @@ cap:
   - PCI
 ```
 
-# VOXMO File Layout
+---
 
-VOXMO menggunakan format file **modular** yang terdiri dari **header**, diikuti **metadata file**, lalu **isi file** secara berurutan. Format ini memungkinkan paket modul dengan beberapa file di dalam satu bundle.
+## Format File VOXMO
 
-## 1. Header (`metadata_header`)
+Format `.voxmo` memiliki struktur modular: dimulai dari **header**, diikuti beberapa **metadata file**, dan masing-masing diikuti oleh **data file**.  
+Struktur ini memungkinkan bundling beberapa file menjadi satu paket modul yang mudah dibaca oleh kernel loader.
 
-Header berada di awal file dan berisi informasi modul secara umum.
+---
 
-| Field         | Tipe              | Keterangan                                             |
-| ------------- | ----------------- | ------------------------------------------------------ |
-| `magic`       | `uint32_t`        | Magic number file, contohnya `0x564F584D` (`'VOXM'`)   |
-| `version`     | `uint16_t`        | Versi format VOXMO                                     |
-| `header_len`  | `uint32_t`        | Panjang header termasuk semua string dan list metadata |
-| `nama_module` | `metadata_string` | Nama modul (`length` dan `data`)                       |
-| `description` | `metadata_string` | Deskripsi modul                                        |
-| `license`     | `metadata_string` | Lisensi modul                                          |
-| `version_str` | `metadata_string` | Versi modul dalam string                               |
-| `author`      | `metadata_string` | Nama penulis                                           |
-| `main_file`   | `metadata_string` | Nama file utama modul                                  |
-| `capability`  | `metadata_list`   | Daftar capability/module yang didukung                 |
+### 1. Header (`metadata_header`)
 
-**Layout di file (byte order little-endian):**
+Header berada di awal file dan berisi informasi umum tentang modul.
+
+| Field          | Tipe              | Keterangan                                             |
+| --------------- | ----------------- | ------------------------------------------------------ |
+| `magic`         | `uint32_t`        | Magic number file, contoh: `0x564F584D` (`'VOXM'`)     |
+| `version`       | `uint16_t`        | Versi format metadata                                  |
+| `header_len`    | `uint32_t`        | Panjang keseluruhan header (termasuk semua string dan list) |
+| `file_counts`   | `uint32_t`        | Jumlah file dalam bundle                               |
+| `nama_module`   | `metadata_string` | Nama modul                                             |
+| `description`   | `metadata_string` | Deskripsi modul                                        |
+| `license`       | `metadata_string` | Lisensi modul                                          |
+| `version_str`   | `metadata_string` | Versi modul                                            |
+| `author`        | `metadata_string` | Nama pembuat                                           |
+| `main_file`     | `metadata_string` | Nama file utama modul                                  |
+| `capability`    | `metadata_list`   | Daftar kemampuan atau modul yang didukung              |
+
+#### Struktur `metadata_string`
+
+```c
+struct metadata_string {
+    uint16_t length;  // Panjang string (termasuk '\0')
+    uint64_t pos;     // Posisi data string dalam file
+};
+```
+
+String sekarang **selalu diakhiri dengan `\0`** untuk mempermudah parsing tanpa tambahan copy buffer.
+
+#### Struktur `metadata_list`
+
+```c
+struct metadata_list {
+    uint16_t count;              // Jumlah item dalam daftar
+    struct metadata_string *items; // Pointer ke elemen string
+};
+```
+
+#### Layout Header di File (Little Endian)
 
 ```
-[magic][version][header_len]
-[nama_module.length][nama_module.data]
-[description.length][description.data]
-[license.length][license.data]
-[version_str.length][version_str.data]
-[author.length][author.data]
-[main_file.length][main_file.data]
+[magic][version][header_len][file_counts]
+[nama_module.length][nama_module.pos]
+[description.length][description.pos]
+[license.length][license.pos]
+[version_str.length][version_str.pos]
+[author.length][author.pos]
+[main_file.length][main_file.pos]
 [capability.count][capability.items...]
 ```
 
-* `metadata_string` terdiri dari 2 byte length diikuti data string (tidak null-terminated).
-* `metadata_list` terdiri dari 2 byte count, diikuti `metadata_string` untuk tiap item.
+---
 
-## 2. Metadata File (`metadata_file`)
+### 2. Metadata File (`metadata_file`)
 
-Setiap file dalam modul memiliki metadata yang menyertainya:
+Setiap file yang dibundel memiliki metadata-nya sendiri.
 
 | Field             | Tipe              | Keterangan                                        |
 | ----------------- | ----------------- | ------------------------------------------------- |
-| `next_offset`     | `uint64_t`        | Offset file berikutnya relatif terhadap awal file |
-| `metadata_length` | `uint32_t`        | Panjang metadata file ini, termasuk nama file     |
-| `size`            | `uint32_t`        | Ukuran file (bytes)                               |
-| `nama_file`       | `metadata_string` | Nama file (`length` dan `data`)                   |
+| `next_offset`     | `uint64_t`        | Offset ke metadata file berikutnya (0 jika akhir) |
+| `metadata_length` | `uint32_t`        | Panjang metadata (termasuk nama file)             |
+| `size`            | `uint32_t`        | Ukuran isi file dalam byte                        |
+| `nama_file`       | `metadata_string` | Nama file yang disertakan                         |
 
-**Layout di file (byte order little-endian):**
-
-```
-[next_offset][metadata_length][size][nama_file.length][nama_file.data]
-```
-
-## 3. Urutan Data di File VOXMO
-
-Secara keseluruhan, file VOXMO memiliki urutan:
+#### Layout di File (Little Endian)
 
 ```
-Header
-Metadata File 1
-File 1
-Metadata File 2
-File 2
-...
-Metadata File N
-File N
+[next_offset][metadata_length][size]
+[nama_file.length][nama_file.pos]
 ```
 
-* `Header` selalu di awal.
-* Setiap `metadata_file` diikuti langsung oleh **isi file** sesuai `size`.
-* `next_offset` memungkinkan pembaca lompat ke metadata file berikutnya tanpa harus membaca seluruh file.
+---
 
-## 4. Catatan Tambahan
+### 3. Urutan Data dalam File `.voxmo`
 
-* Semua string (`metadata_string.data`) **tidak null-terminated**, panjangnya ditentukan oleh `length`.
-* Magic number digunakan untuk validasi format file saat load.
+Secara keseluruhan, urutan isi file adalah sebagai berikut:
+
+```
++-------------------------+
+| metadata_header         |
++-------------------------+
+| string data block       |
++-------------------------+
+| metadata_file #1        |
++-------------------------+
+| file data #1            |
++-------------------------+
+| metadata_file #2        |
++-------------------------+
+| file data #2            |
++-------------------------+
+| ...                     |
++-------------------------+
+```
+
+Keterangan:
+- Header selalu diletakkan di awal.
+- Setiap `metadata_file` diikuti langsung oleh isi file sesuai dengan ukuran (`size`).
+- `next_offset` memungkinkan sistem melompat langsung ke metadata berikutnya tanpa traversal penuh.
+
+---
+
+### 4. Catatan Penting
+
+- Semua field numerik disimpan dalam **little-endian**.
+- Semua string diakhiri dengan `\0`, tetapi panjang tetap dihitung di field `length`.
+- Magic number wajib dicek untuk memvalidasi format file sebelum parsing.
+
+---
+
+### 5. Nilai Magic
+
+| Field | Nilai | Deskripsi |
+| ------ | ------ | ---------- |
+| `magic` | `0x564F584D` | ASCII: `'VOXM'` |
+| `version` | `1` | Versi pertama format VOXMO |
