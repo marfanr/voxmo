@@ -3,10 +3,10 @@
 
 #include <cstdint>
 
-
+#pragma pack(push, 1)
 struct metadata_string {
     uint16_t length;
-    char *data; 
+    uint64_t pos;
 };
 
 struct metadata_list {
@@ -30,7 +30,6 @@ struct metadata_header {
     struct metadata_list capability;
 };
 
-
 struct  metadata_file {
     uint64_t next_offset;
     uint32_t metadata_length;
@@ -38,4 +37,5 @@ struct  metadata_file {
     struct metadata_string nama_file;
 };
 
+#pragma pack(pop)
 #endif // __METADATA__HH__

@@ -1,12 +1,24 @@
 #include "builder.hh"
 #include "manifest.hh"
 #include "metadata.hh"
+#include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <string>
+#include <sys/types.h>
 #include <variant>
 #include <vector>
+
+template <typename T> void write_le(std::ofstream &out, T value) {
+  static_assert(std::is_integral_v<T> || std::is_enum_v<T>,
+                "Must be integer-like");
+  for (size_t i = 0; i < sizeof(T); ++i) {
+    out.put(static_cast<char>((value >> (8 * i)) & 0xFF));
+  }
+}
 
 #define VOXMO_MAGIC 0x564f584d
 
@@ -31,53 +43,16 @@ std::vector<std::string> get_lines(std::vector<char> data) {
   return lines;
 }
 
-static void set_metadata_string(metadata_string &dest, const std::string &src) {
-  dest.length = static_cast<uint16_t>(src.length());
-  dest.data = new char[dest.length];
-  std::copy(src.begin(), src.end(), dest.data);
+void write_string_segment(std::ofstream &out, std::string str,
+                          uint64_t &string_pos) {
+  auto curr_pos = out.tellp();
+  out.seekp(string_pos, std::ios::beg);
+  out.write(str.c_str(), str.size());
+  // null terminated
+  out.put('\0');
+  out.seekp(curr_pos, std::ios::beg);
+  string_pos += str.size() + 1;
 }
-
-void set_metadata_list(struct metadata_list &dest,
-                       const std::vector<std::string> &src) {
-  dest.count = static_cast<uint16_t>(src.size());
-  dest.items = new metadata_string[dest.count];
-
-  for (uint16_t i = 0; i < dest.count; ++i) {
-    const auto &s = src[i];
-    dest.items[i].length = static_cast<uint16_t>(s.length());
-    dest.items[i].data = new char[dest.items[i].length];
-    std::copy(s.begin(), s.end(), dest.items[i].data);
-  }
-}
-
-void free_metadata_list(metadata_list &list) {
-  for (uint16_t i = 0; i < list.count; ++i) {
-    delete[] list.items[i].data;
-  }
-  delete[] list.items;
-  list.items = nullptr;
-  list.count = 0;
-}
-
-template<typename T>
-void write_le(std::ofstream& out, T value) {
-    for (size_t i = 0; i < sizeof(T); ++i) {
-        out.put(static_cast<char>((value >> (8 * i)) & 0xFF));
-    }
-}
-
-void write_metadata_string(std::ofstream& out, const metadata_string& s) {
-    write_le(out, s.length);
-    out.write(s.data, s.length);
-}
-
-void write_metadata_list(std::ofstream& out, const metadata_list& list) {
-    write_le(out, list.count);
-    for (uint16_t i = 0; i < list.count; ++i) {
-        write_metadata_string(out, list.items[i]);
-    }
-}
-
 
 void Builder::build(std::string filename) {
 
@@ -110,6 +85,8 @@ void Builder::build(std::string filename) {
     }
   }
 
+  auto capability = std::get<std::vector<std::string>>(m["capability"]);
+
   std::ofstream out(filename, std::ios::binary | std::ios::out);
 
   // creating metadata
@@ -119,76 +96,112 @@ void Builder::build(std::string filename) {
   header.header_len = sizeof(header);
   header.file_counts = loader->get_files().size() - 1;
 
+  uint64_t string_pos = sizeof(metadata_header) +
+                        header.file_counts * sizeof(metadata_file) +
+                        capability.size() * sizeof(metadata_string);
+
+  printf("string_pos: %lu\n", string_pos);
+
   write_le(out, header.magic);
   write_le(out, header.version);
   auto header_len_pos = out.tellp();
   write_le(out, header.header_len);
   write_le(out, header.file_counts);
-  
 
   std::string name = std::get<std::string>(m["name"]);
-  set_metadata_string(header.nama_module, name);
-  header.header_len += header.nama_module.length;
-  write_metadata_string(out, header.nama_module);
+  header.nama_module.length = static_cast<uint16_t>(name.size() + 1);
+  header.nama_module.pos = string_pos;
+  write_le(out, header.nama_module.length);
+  write_le(out, header.nama_module.pos);
+  write_string_segment(out, name, string_pos);
 
-  set_metadata_string(header.description,
-                      std::get<std::string>(m["description"]));
-  header.header_len += header.description.length;
-  write_metadata_string(out, header.description);
+  std::string description = std::get<std::string>(m["description"]);
+  header.description.length = static_cast<uint16_t>(description.size() + 1);
+  header.description.pos = string_pos;
+  write_le(out, header.description.length);
+  write_le(out, header.description.pos);
+  write_string_segment(out, description, string_pos);
 
-  set_metadata_string(header.license, std::get<std::string>(m["license"]));
-  header.header_len += header.license.length;
-  write_metadata_string(out, header.license);
+  std::string license = std::get<std::string>(m["license"]);
+  header.license.length = static_cast<uint16_t>(license.size() + 1);
+  header.license.pos = string_pos;
+  write_le(out, header.license.length);
+  write_le(out, header.license.pos);
+  write_string_segment(out, license, string_pos);
 
-  set_metadata_string(header.version_str, std::get<std::string>(m["version"]));
-  header.header_len += header.version_str.length;
-  write_metadata_string(out, header.version_str);
+  std::string version = std::get<std::string>(m["version"]);
+  header.version_str.length = static_cast<uint16_t>(version.size() + 1);
+  header.version_str.pos = string_pos;
+  write_le(out, header.version_str.length);
+  write_le(out, header.version_str.pos);
+  write_string_segment(out, version, string_pos);
 
-  set_metadata_string(header.author, std::get<std::string>(m["author"]));
-  header.header_len += header.author.length;
-  write_metadata_string(out, header.author);
+  std::string author = std::get<std::string>(m["author"]);
+  header.author.length = static_cast<uint16_t>(author.size() + 1);
+  header.author.pos = string_pos;
+  write_le(out, header.author.length);
+  write_le(out, header.author.pos);
+  write_string_segment(out, author, string_pos);
 
-  set_metadata_string(header.main_file, std::get<std::string>(m["main"]));
-  header.header_len += header.main_file.length;
-  write_metadata_string(out, header.main_file);
+  std::string main = std::get<std::string>(m["main"]);
+  header.main_file.length = static_cast<uint16_t>(main.size() + 1);
+  header.main_file.pos = string_pos;
+  write_le(out, header.main_file.length);
+  write_le(out, header.main_file.pos);
+  write_string_segment(out, main, string_pos);
 
-  if (std::holds_alternative<std::vector<std::string>>(m["capability"])) {
-    set_metadata_list(header.capability,
-                      std::get<std::vector<std::string>>(m["capability"]));
-    header.header_len += header.capability.count * sizeof(metadata_string);
-  } else {
-    set_metadata_list(header.capability, std::vector<std::string>());
-    header.header_len += sizeof(metadata_list);
+  header.capability.count = capability.size();
+  write_le(out, header.capability.count);
+  header.capability.items = new metadata_string[capability.size()];
+  for (int i = 0; i < capability.size(); ++i) {
+    header.capability.items[i].length =
+        static_cast<uint16_t>(capability[i].size() + 1);
+    write_le(out, header.capability.items[i].length);
+    header.capability.items[i].pos = string_pos;
+    write_le(out, header.capability.items[i].pos);
+    write_string_segment(out, capability[i], string_pos);
   }
-  write_metadata_list(out, header.capability);
-  free_metadata_list(header.capability);
 
-  // update header len
-  auto current_pos = out.tellp();
-  out.seekp(header_len_pos, std::ios::beg);
-  write_le(out, header.header_len);
-  out.seekp(current_pos, std::ios::beg);
-
-
-  // add file except metadata
+  std::vector<uint64_t> next_offset_pos;
   for (const auto &f : loader->get_files()) {
     std::filesystem::path p(f->path);
     if (p.filename() == "manifest.yaml") {
       continue;
     }
 
-
     metadata_file mf;
     mf.size = f->data.size();
-    set_metadata_string(mf.nama_file, p.filename().string());
-    mf.metadata_length = sizeof(mf) + mf.nama_file.length;
-    
+    mf.nama_file.length = static_cast<uint16_t>(p.filename().string().size() + 1);
+    mf.nama_file.pos = string_pos;
+    mf.metadata_length = sizeof(mf);
     mf.next_offset = header.header_len + mf.metadata_length + mf.size;
+    
+    auto curr_pos = out.tellp();
+    next_offset_pos.push_back(curr_pos);
     write_le(out, mf.next_offset);
     write_le(out, mf.metadata_length);
     write_le(out, mf.size);
-    write_metadata_string(out, mf.nama_file);
-
-    out.write(f->data.data(), f->data.size());
+    write_le(out, mf.nama_file.length);
+    write_le(out, mf.nama_file.pos);
+    write_string_segment(out, p.filename().string(), string_pos);
   }
+
+  uint64_t file_pos = string_pos;
+  auto files = loader->get_files();
+  for (int i = 0; i < files.size(); ++i) {
+    const auto &f = files[i];
+    std::filesystem::path p(f->path);
+    if (p.filename() == "manifest.yaml") {
+      continue;
+    }
+
+    out.seekp(next_offset_pos[i], std::ios::beg);
+    write_le(out, file_pos);
+    out.seekp(file_pos, std::ios::beg);
+    out.write(f->data.data(), f->data.size());
+    file_pos += f->data.size();
+  }
+
+  printf("last file_pos: %lu\n", file_pos);
+  printf("build done\n");
 }

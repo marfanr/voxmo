@@ -6,10 +6,13 @@
 #include <vector>
 
 // Helper untuk baca string dinamis dari file biner
-std::string read_string(std::ifstream &in, metadata_string &s) {
-  in.read(reinterpret_cast<char *>(&s.length), sizeof(s.length));
-  std::vector<char> buf(s.length);
-  in.read(buf.data(), s.length);
+std::string read_string(std::ifstream &in, struct metadata_string &str) {
+  std::vector<char> buf(str.length);
+  uint64_t curr_pos = in.tellg();
+  in.seekg(str.pos, std::ios::beg);
+  in.read(buf.data(), str.length);
+  in.seekg(curr_pos, std::ios::beg);
+  // pos += len;
   return std::string(buf.begin(), buf.end());
 }
 
@@ -35,22 +38,56 @@ int main(int argc, char **argv) {
           sizeof(header.header_len));
   in.read(reinterpret_cast<char *>(&header.file_counts),
           sizeof(header.file_counts));
-
-
-  if (!in) {
-    std::cerr << "Failed to read basic header fields\n";
-    return 1;
-  }
+  in.read(reinterpret_cast<char *>(&header.nama_module.length),
+          sizeof(header.nama_module.length));
+  in.read(reinterpret_cast<char *>(&header.nama_module.pos),
+          sizeof(header.nama_module.pos));
+  in.read(reinterpret_cast<char *>(&header.description.length),
+          sizeof(header.description.length));
+  in.read(reinterpret_cast<char *>(&header.description.pos),
+          sizeof(header.description.pos));
+  in.read(reinterpret_cast<char *>(&header.license.length),
+          sizeof(header.license.length));
+  in.read(reinterpret_cast<char *>(&header.license.pos),
+          sizeof(header.license.pos));
+  in.read(reinterpret_cast<char *>(&header.version_str.length),
+          sizeof(header.version_str.length));
+  in.read(reinterpret_cast<char *>(&header.version_str.pos),
+          sizeof(header.version_str.pos));
+  in.read(reinterpret_cast<char *>(&header.author.length),
+          sizeof(header.author.length));
+  in.read(reinterpret_cast<char *>(&header.author.pos),
+          sizeof(header.author.pos));
+  in.read(reinterpret_cast<char *>(&header.main_file.length),
+          sizeof(header.main_file.length));
+  in.read(reinterpret_cast<char *>(&header.main_file.pos),
+          sizeof(header.main_file.pos));
 
   std::cout << "=== Voxmo Header Info ===\n";
   std::cout << "Magic: 0x" << std::hex << header.magic << std::dec << "\n";
   std::cout << "Version: " << header.version << "\n";
   std::cout << "Header Length: " << header.header_len << "\n";
   std::cout << "File Count: " << header.file_counts << "\n";
+  std::cout << "Nama Module len " << header.nama_module.length << " pos "
+            << header.nama_module.pos << "\n";
+  std::cout << "Description len " << header.description.length << " pos "
+            << header.description.pos << "\n";
+  std::cout << "License len " << header.license.length << " pos "
+            << header.license.pos << "\n";
+  std::cout << "Version len " << header.version_str.length << " pos "
+            << header.version_str.pos << "\n";
+  std::cout << "Author len " << header.author.length << " pos "
+            << header.author.pos << "\n";
+  std::cout << "Main File len " << header.main_file.length << " pos "
+            << header.main_file.pos << "\n\n";
 
+  uint64_t string_pos = sizeof(metadata_header) +
+                        header.file_counts * sizeof(metadata_file) +
+                        header.capability.count * sizeof(metadata_string);
 
   // Baca string-string metadata
-  std::cout << "Nama Module: " << read_string(in, header.nama_module) << "\n";
+  std::cout << "Nama Module: " << read_string(in, header.nama_module)
+            << std::endl;
   std::cout << "Description: " << read_string(in, header.description) << "\n";
   std::cout << "License: " << read_string(in, header.license) << "\n";
   std::cout << "Version: " << read_string(in, header.version_str) << "\n";
@@ -64,22 +101,31 @@ int main(int argc, char **argv) {
 
   header.capability.items = new metadata_string[header.capability.count];
   for (int i = 0; i < header.capability.count; ++i) {
+    in.read(reinterpret_cast<char *>(&header.capability.items[i].length),
+            sizeof(header.capability.items[i].length));
+    in.read(reinterpret_cast<char *>(&header.capability.items[i].pos),
+            sizeof(header.capability.items[i].pos));
+
     std::cout << "  - " << read_string(in, header.capability.items[i]) << "\n";
   }
 
   // Sekarang baca tabel file
   std::cout << "\n=== Files ===\n";
-  while (in.peek() != EOF) {
-      metadata_file mf;
-      in.read(reinterpret_cast<char*>(&mf.next_offset), sizeof(mf.next_offset));
-      in.read(reinterpret_cast<char*>(&mf.metadata_length), sizeof(mf.metadata_length));
-      in.read(reinterpret_cast<char*>(&mf.size), sizeof(mf.size));
-      std::string filename = read_string(in, mf.nama_file);
-      std::cout << "File: " << filename
-                << " | Size: " << mf.size
-                << " | Next offset: " << mf.next_offset << "\n";
+  for(int i = 0; i < header.file_counts; ++i) {
+    metadata_file mf;
+    in.read(reinterpret_cast<char *>(&mf.next_offset), sizeof(mf.next_offset));
+    in.read(reinterpret_cast<char *>(&mf.metadata_length),
+            sizeof(mf.metadata_length));
+    in.read(reinterpret_cast<char *>(&mf.size), sizeof(mf.size));
+    in.read(reinterpret_cast<char *>(&mf.nama_file.length),
+            sizeof(mf.nama_file.length));
+    in.read(reinterpret_cast<char *>(&mf.nama_file.pos),
+            sizeof(mf.nama_file.pos));
 
-      in.seekg(mf.size, std::ios::cur);
+    std::cout << "  - " << read_string(in, mf.nama_file) << "\n";
+    std::cout << "    Size: " << mf.size << "\n";
+    std::cout << "    Next Offset: " << mf.next_offset << "\n";
+    std::cout << "    Metadata Length: " << mf.metadata_length << "\n";
   }
 
   std::cout << "\n=== End of Dump ===\n";
