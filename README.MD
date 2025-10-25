@@ -151,8 +151,8 @@ Secara keseluruhan, urutan isi file adalah sebagai berikut:
 
 Keterangan:
 - Header selalu diletakkan di awal.
-- Semua `metadata_file` diletakkan berurutan sebelum blok data file.
-- Setelah seluruh metadata file, baru diikuti oleh isi file masing-masing sesuai urutan.
+- Semua `metadata_file` diletakkan berurutan.
+- Setelah  metadata string, baru diikuti oleh isi file masing-masing sesuai urutan.
 - `offset` menunjukkan posisi metadata file berikutnya untuk navigasi cepat.
 
 ---
