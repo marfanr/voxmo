@@ -123,6 +123,8 @@ int main(int argc, char **argv) {
             sizeof(mf.nama_file.pos));
 
     std::cout << "  - " << read_string(in, mf.nama_file) << "\n";
+    std::cout << "    Nama File Length: " << mf.nama_file.length << "\n";
+    std::cout << "    Nama File Pos: " << mf.nama_file.pos << "\n";
     std::cout << "    Size: " << mf.size << "\n";
     std::cout << "    File Offset: " << mf.offset << "\n";
     std::cout << "    Metadata Length: " << mf.metadata_length << "\n";

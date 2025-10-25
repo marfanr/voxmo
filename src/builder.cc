@@ -93,7 +93,18 @@ void Builder::build(std::string filename) {
   metadata_header header;
   header.magic = VOXMO_MAGIC;
   header.version = 1;
-  header.header_len = sizeof(header);
+  header.header_len = sizeof(header.magic)
+                  + sizeof(header.version)
+                  + sizeof(header.header_len)
+                  + sizeof(header.file_counts)
+                  + sizeof(header.nama_module)
+                  + sizeof(header.description)
+                  + sizeof(header.license)
+                  + sizeof(header.version_str)
+                  + sizeof(header.author)
+                  + sizeof(header.main_file)
+                  + sizeof(header.capability.count);
+
   header.file_counts = loader->get_files().size() - 1;
 
   uint64_t string_pos = sizeof(metadata_header) +
@@ -104,6 +115,7 @@ void Builder::build(std::string filename) {
 
   write_le(out, header.magic);
   write_le(out, header.version);
+  
   auto header_len_pos = out.tellp();
   write_le(out, header.header_len);
   write_le(out, header.file_counts);
@@ -152,6 +164,7 @@ void Builder::build(std::string filename) {
 
   header.capability.count = capability.size();
   write_le(out, header.capability.count);
+
   header.capability.items = new metadata_string[capability.size()];
   for (int i = 0; i < capability.size(); ++i) {
     header.capability.items[i].length =
@@ -160,6 +173,18 @@ void Builder::build(std::string filename) {
     header.capability.items[i].pos = string_pos;
     write_le(out, header.capability.items[i].pos);
     write_string_segment(out, capability[i], string_pos);
+  }
+
+  header.header_len += capability.size() * sizeof(metadata_string);
+
+  
+  // update header len
+  {
+    auto curr_pos = out.tellp();
+    out.seekp(header_len_pos, std::ios::beg);
+    write_le(out, header.header_len);
+    out.seekp(curr_pos, std::ios::beg);
+
   }
 
   std::vector<uint64_t> file_offset_pos;
