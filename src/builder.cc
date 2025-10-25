@@ -1,6 +1,7 @@
 #include "builder.hh"
 #include "manifest.hh"
 #include "metadata.hh"
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
@@ -93,17 +94,12 @@ void Builder::build(std::string filename) {
   metadata_header header;
   header.magic = VOXMO_MAGIC;
   header.version = 1;
-  header.header_len = sizeof(header.magic)
-                  + sizeof(header.version)
-                  + sizeof(header.header_len)
-                  + sizeof(header.file_counts)
-                  + sizeof(header.nama_module)
-                  + sizeof(header.description)
-                  + sizeof(header.license)
-                  + sizeof(header.version_str)
-                  + sizeof(header.author)
-                  + sizeof(header.main_file)
-                  + sizeof(header.capability.count);
+  header.header_len = sizeof(header.magic) + sizeof(header.version) +
+                      sizeof(header.header_len) + sizeof(header.file_counts) +
+                      sizeof(header.nama_module) + sizeof(header.description) +
+                      sizeof(header.license) + sizeof(header.version_str) +
+                      sizeof(header.author) + sizeof(header.main_file) +
+                      sizeof(header.capability.count);
 
   header.file_counts = loader->get_files().size() - 1;
 
@@ -115,7 +111,7 @@ void Builder::build(std::string filename) {
 
   write_le(out, header.magic);
   write_le(out, header.version);
-  
+
   auto header_len_pos = out.tellp();
   write_le(out, header.header_len);
   write_le(out, header.file_counts);
@@ -156,6 +152,10 @@ void Builder::build(std::string filename) {
   write_string_segment(out, author, string_pos);
 
   std::string main = std::get<std::string>(m["main"]);
+  main.erase(std::remove_if(main.begin(), main.end(),
+                            [](unsigned char c) { return std::isspace(c); }),
+             main.end());
+             
   header.main_file.length = static_cast<uint16_t>(main.size() + 1);
   header.main_file.pos = string_pos;
   write_le(out, header.main_file.length);
@@ -177,14 +177,12 @@ void Builder::build(std::string filename) {
 
   header.header_len += capability.size() * sizeof(metadata_string);
 
-  
   // update header len
   {
     auto curr_pos = out.tellp();
     out.seekp(header_len_pos, std::ios::beg);
     write_le(out, header.header_len);
     out.seekp(curr_pos, std::ios::beg);
-
   }
 
   std::vector<uint64_t> file_offset_pos;
@@ -196,11 +194,12 @@ void Builder::build(std::string filename) {
 
     metadata_file mf;
     mf.size = f->data.size();
-    mf.nama_file.length = static_cast<uint16_t>(p.filename().string().size() + 1);
+    mf.nama_file.length =
+        static_cast<uint16_t>(p.filename().string().size() + 1);
     mf.nama_file.pos = string_pos;
     mf.metadata_length = sizeof(mf);
     mf.offset = 0;
-    
+
     auto curr_pos = out.tellp();
     file_offset_pos.push_back(curr_pos);
     write_le(out, mf.offset);
@@ -221,7 +220,6 @@ void Builder::build(std::string filename) {
       continue;
     }
 
-    
     out.seekp(file_offset_pos[file_idx++], std::ios::beg);
     write_le(out, file_pos);
     out.seekp(file_pos, std::ios::beg);
