@@ -99,7 +99,10 @@ void Builder::build(std::string filename) {
                       sizeof(header.nama_module) + sizeof(header.description) +
                       sizeof(header.license) + sizeof(header.version_str) +
                       sizeof(header.author) + sizeof(header.main_file) +
-                      sizeof(header.capability.count);
+                      sizeof(header.capability.count) +
+                      sizeof(header.capability.metadata_pos);
+  
+  uint32_t capability_offset = header.header_len;
 
   header.file_counts = loader->get_files().size() - 1;
 
@@ -163,15 +166,18 @@ void Builder::build(std::string filename) {
   write_string_segment(out, main, string_pos);
 
   header.capability.count = capability.size();
+  header.capability.metadata_pos = capability_offset;
   write_le(out, header.capability.count);
+  write_le(out, header.capability.metadata_pos);
 
-  header.capability.items = new metadata_string[capability.size()];
+
+  struct metadata_string * metadata = new metadata_string[capability.size()];
   for (int i = 0; i < capability.size(); ++i) {
-    header.capability.items[i].length =
+    metadata[i].length =
         static_cast<uint16_t>(capability[i].size() + 1);
-    write_le(out, header.capability.items[i].length);
-    header.capability.items[i].pos = string_pos;
-    write_le(out, header.capability.items[i].pos);
+    write_le(out, metadata[i].length);
+    metadata[i].pos = string_pos;
+    write_le(out, metadata[i].pos);
     write_string_segment(out, capability[i], string_pos);
   }
 

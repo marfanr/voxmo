@@ -99,19 +99,22 @@ int main(int argc, char **argv) {
           sizeof(header.capability.count));
   std::cout << "\nCapabilities (" << header.capability.count << "):\n";
 
-  header.capability.items = new metadata_string[header.capability.count];
-  for (int i = 0; i < header.capability.count; ++i) {
-    in.read(reinterpret_cast<char *>(&header.capability.items[i].length),
-            sizeof(header.capability.items[i].length));
-    in.read(reinterpret_cast<char *>(&header.capability.items[i].pos),
-            sizeof(header.capability.items[i].pos));
+  in.read(reinterpret_cast<char *>(&header.capability.metadata_pos),
+          sizeof(header.capability.metadata_pos));
+  std::cout << "Metadata Pos: " << header.capability.metadata_pos << "\n";
 
-    std::cout << "  - " << read_string(in, header.capability.items[i]) << "\n";
+  in.seekg(header.capability.metadata_pos, std::ios::beg);
+  for (int i = 0; i < header.capability.count; ++i) {
+    metadata_string *metadata = new metadata_string;
+    in.read(reinterpret_cast<char *>(&metadata->length),
+            sizeof(metadata->length));
+    in.read(reinterpret_cast<char *>(&metadata->pos), sizeof(metadata->pos));
+    std::cout << "  - " << read_string(in, *metadata) << "\n";
   }
 
   // Sekarang baca tabel file
   std::cout << "\n=== Files ===\n";
-  for(int i = 0; i < header.file_counts; ++i) {
+  for (int i = 0; i < header.file_counts; ++i) {
     metadata_file mf;
     in.read(reinterpret_cast<char *>(&mf.offset), sizeof(mf.offset));
     in.read(reinterpret_cast<char *>(&mf.metadata_length),

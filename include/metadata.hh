@@ -11,7 +11,7 @@ struct metadata_string {
 
 struct metadata_list {
     uint16_t count;
-    struct metadata_string *items;
+    uint64_t metadata_pos;
 };
 
 struct metadata_header {
