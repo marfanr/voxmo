@@ -80,14 +80,24 @@ void Builder::build(std::string filename) {
       "name", "version", "author", "description", "license", "main"};
 
   for (const auto &field : required_fields) {
-    if (std::holds_alternative<std::vector<std::string>>(m[field])) {
+    auto val = m[field];  
+    if (std::holds_alternative<std::vector<std::string>>(val.value()) ||
+        !val.has_value()) {
       std::cerr << "error: module must have " << field << std::endl;
       return;
     }
   }
 
-  auto capability = std::get<std::vector<std::string>>(m["capability"]);
-  auto dependency = std::get<std::vector<std::string>>(m["dependency"]);
+  if (!m["capability"].has_value()) {
+    m.set("capability", std::vector<std::string>{});
+  }
+  if (!m["dependency"].has_value()) {
+    m.set("dependency", std::vector<std::string>{});
+  }
+  auto capability =
+      std::get<std::vector<std::string>>(m["capability"].value());
+  auto dependency =
+      std::get<std::vector<std::string>>(m["dependency"].value());
 
   std::ofstream out(filename, std::ios::binary | std::ios::out);
 
@@ -122,42 +132,42 @@ void Builder::build(std::string filename) {
   write_le(out, header.header_len);
   write_le(out, header.file_counts);
 
-  std::string name = std::get<std::string>(m["name"]);
+  std::string name = std::get<std::string>(m["name"].value());
   header.nama_module.length = static_cast<uint16_t>(name.size() + 1);
   header.nama_module.pos = string_pos;
   write_le(out, header.nama_module.length);
   write_le(out, header.nama_module.pos);
   write_string_segment(out, name, string_pos);
 
-  std::string description = std::get<std::string>(m["description"]);
+  std::string description = std::get<std::string>(m["description"].value());
   header.description.length = static_cast<uint16_t>(description.size() + 1);
   header.description.pos = string_pos;
   write_le(out, header.description.length);
   write_le(out, header.description.pos);
   write_string_segment(out, description, string_pos);
 
-  std::string license = std::get<std::string>(m["license"]);
+  std::string license = std::get<std::string>(m["license"].value());
   header.license.length = static_cast<uint16_t>(license.size() + 1);
   header.license.pos = string_pos;
   write_le(out, header.license.length);
   write_le(out, header.license.pos);
   write_string_segment(out, license, string_pos);
 
-  std::string version = std::get<std::string>(m["version"]);
+  std::string version = std::get<std::string>(m["version"].value());
   header.version_str.length = static_cast<uint16_t>(version.size() + 1);
   header.version_str.pos = string_pos;
   write_le(out, header.version_str.length);
   write_le(out, header.version_str.pos);
   write_string_segment(out, version, string_pos);
 
-  std::string author = std::get<std::string>(m["author"]);
+  std::string author = std::get<std::string>(m["author"].value());
   header.author.length = static_cast<uint16_t>(author.size() + 1);
   header.author.pos = string_pos;
   write_le(out, header.author.length);
   write_le(out, header.author.pos);
   write_string_segment(out, author, string_pos);
 
-  std::string main = std::get<std::string>(m["main"]);
+  std::string main = std::get<std::string>(m["main"].value());
   main.erase(std::remove_if(main.begin(), main.end(),
                             [](unsigned char c) { return std::isspace(c); }),
              main.end());

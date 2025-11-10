@@ -1,6 +1,7 @@
 #include "manifest.hh"
 #include <algorithm>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -56,11 +57,22 @@ Manifest::Manifest(std::vector<std::string> data) {
   }
 }
 
-Manifest::value &Manifest::operator[](std::string key) {
+std::optional<Manifest::value> Manifest::operator[](std::string key) {
     for (auto &d : manifest_data) {
         if (d.first == key) {
             return d.second;
         }
     }
-    return manifest_data.back().second;
+    return std::nullopt;
+}
+
+
+void Manifest::set(std::string key, value val) {
+    for (auto &d : manifest_data) {
+        if (d.first == key) {
+            d.second = val;
+            return;
+        }
+    }
+    manifest_data.push_back(std::make_pair(key, val));
 }

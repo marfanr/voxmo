@@ -1,6 +1,7 @@
 #ifndef __MANIFEST_HH__
 #define __MANIFEST_HH__
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -14,7 +15,7 @@ class Manifest {
     value get(std::string key);
     void set(std::string key, value val);
 
-    value &operator[](std::string key);
+    std::optional<value> operator[](std::string key);
     
 
     private:
