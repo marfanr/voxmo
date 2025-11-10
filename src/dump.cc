@@ -103,8 +103,27 @@ int main(int argc, char **argv) {
           sizeof(header.capability.metadata_pos));
   std::cout << "Metadata Pos: " << header.capability.metadata_pos << "\n";
 
+  in.read(reinterpret_cast<char *>(&header.dependency.count),
+          sizeof(header.dependency.count));
+  std::cout << "\nDependencies (" << header.dependency.count << "):\n";
+  in.read(reinterpret_cast<char *>(&header.dependency.metadata_pos),
+          sizeof(header.dependency.metadata_pos));
+  std::cout << "Metadata Pos: " << header.dependency.metadata_pos << "\n";
+
+  std::cout << "\n=== Capabilities ===\n";
+
   in.seekg(header.capability.metadata_pos, std::ios::beg);
   for (int i = 0; i < header.capability.count; ++i) {
+    metadata_string *metadata = new metadata_string;
+    in.read(reinterpret_cast<char *>(&metadata->length),
+            sizeof(metadata->length));
+    in.read(reinterpret_cast<char *>(&metadata->pos), sizeof(metadata->pos));
+    std::cout << "  - " << read_string(in, *metadata) << "\n";
+  }
+
+  std::cout << "\n=== Dependencies ===\n";
+  in.seekg(header.dependency.metadata_pos, std::ios::beg);
+  for (int i = 0; i < header.dependency.count; ++i) {
     metadata_string *metadata = new metadata_string;
     in.read(reinterpret_cast<char *>(&metadata->length),
             sizeof(metadata->length));

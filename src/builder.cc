@@ -87,6 +87,7 @@ void Builder::build(std::string filename) {
   }
 
   auto capability = std::get<std::vector<std::string>>(m["capability"]);
+  auto dependency = std::get<std::vector<std::string>>(m["dependency"]);
 
   std::ofstream out(filename, std::ios::binary | std::ios::out);
 
@@ -94,21 +95,23 @@ void Builder::build(std::string filename) {
   metadata_header header;
   header.magic = VOXMO_MAGIC;
   header.version = 1;
-  header.header_len = sizeof(header.magic) + sizeof(header.version) +
-                      sizeof(header.header_len) + sizeof(header.file_counts) +
-                      sizeof(header.nama_module) + sizeof(header.description) +
-                      sizeof(header.license) + sizeof(header.version_str) +
-                      sizeof(header.author) + sizeof(header.main_file) +
-                      sizeof(header.capability.count) +
-                      sizeof(header.capability.metadata_pos);
-  
+  header.header_len =
+      sizeof(header.magic) + sizeof(header.version) +
+      sizeof(header.header_len) + sizeof(header.file_counts) +
+      sizeof(header.nama_module) + sizeof(header.description) +
+      sizeof(header.license) + sizeof(header.version_str) +
+      sizeof(header.author) + sizeof(header.main_file) +
+      sizeof(header.capability.count) + sizeof(header.capability.metadata_pos) +
+      sizeof(header.dependency.count) + sizeof(header.dependency.metadata_pos);
+
   uint32_t capability_offset = header.header_len;
 
   header.file_counts = loader->get_files().size() - 1;
 
   uint64_t string_pos = sizeof(metadata_header) +
                         header.file_counts * sizeof(metadata_file) +
-                        capability.size() * sizeof(metadata_string);
+                        capability.size() * sizeof(metadata_string) +
+                        dependency.size() * sizeof(metadata_string);
 
   printf("string_pos: %lu\n", string_pos);
 
@@ -158,7 +161,7 @@ void Builder::build(std::string filename) {
   main.erase(std::remove_if(main.begin(), main.end(),
                             [](unsigned char c) { return std::isspace(c); }),
              main.end());
-             
+
   header.main_file.length = static_cast<uint16_t>(main.size() + 1);
   header.main_file.pos = string_pos;
   write_le(out, header.main_file.length);
@@ -166,22 +169,49 @@ void Builder::build(std::string filename) {
   write_string_segment(out, main, string_pos);
 
   header.capability.count = capability.size();
+  std::cout << "capability count: " << capability.size() << std::endl;
   header.capability.metadata_pos = capability_offset;
+  std::cout << "capability metadata pos: " << header.capability.metadata_pos
+            << std::endl;
   write_le(out, header.capability.count);
   write_le(out, header.capability.metadata_pos);
 
+  header.dependency.count = dependency.size();
+  std::cout << "dependency count: " << dependency.size() << std::endl;
+  header.dependency.metadata_pos =
+      capability_offset + capability.size() * sizeof(metadata_string);
+  std::cout << "dependency metadata pos: " << header.dependency.metadata_pos
+            << std::endl;
+  write_le(out, header.dependency.count);
+  write_le(out, header.dependency.metadata_pos);
 
-  struct metadata_string * metadata = new metadata_string[capability.size()];
+  struct metadata_string *metadata_capability =
+      new metadata_string[capability.size()];
   for (int i = 0; i < capability.size(); ++i) {
-    metadata[i].length =
+    metadata_capability[i].length =
         static_cast<uint16_t>(capability[i].size() + 1);
-    write_le(out, metadata[i].length);
-    metadata[i].pos = string_pos;
-    write_le(out, metadata[i].pos);
+    metadata_capability[i].pos = string_pos;
+    write_le(out, metadata_capability[i].length);
+    write_le(out, metadata_capability[i].pos);
     write_string_segment(out, capability[i], string_pos);
   }
 
   header.header_len += capability.size() * sizeof(metadata_string);
+
+  struct metadata_string *metadata_dependency =
+      new metadata_string[dependency.size()];
+  for (int i = 0; i < dependency.size(); ++i) {
+    metadata_dependency[i].length =
+        static_cast<uint16_t>(dependency[i].size() + 1);
+    metadata_dependency[i].pos = string_pos;
+    write_le(out, metadata_dependency[i].length);
+    write_le(out, metadata_dependency[i].pos);
+    write_string_segment(out, dependency[i], string_pos);
+  }
+
+  header.header_len += dependency.size() * sizeof(metadata_string);
+
+  // string me
 
   // update header len
   {

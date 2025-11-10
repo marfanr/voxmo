@@ -28,6 +28,7 @@ struct metadata_header {
     struct metadata_string main_file;
 
     struct metadata_list capability;
+    struct metadata_list dependency;
 };
 
 struct  metadata_file {
