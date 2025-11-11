@@ -211,6 +211,7 @@ void Builder::build(std::string filename) {
   struct metadata_string *metadata_dependency =
       new metadata_string[dependency.size()];
   for (int i = 0; i < dependency.size(); ++i) {
+    std::cout << "dependency:" << dependency[i] << std::endl;
     metadata_dependency[i].length =
         static_cast<uint16_t>(dependency[i].size() + 1);
     metadata_dependency[i].pos = string_pos;

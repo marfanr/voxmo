@@ -23,6 +23,7 @@ Manifest::Manifest(std::vector<std::string> data) {
 
     if (line[0] == '-') {
       std::string item = line.substr(1); // buang '-'
+      // trim
       item.erase(item.begin(),
                  std::find_if(item.begin(), item.end(), [](unsigned char ch) {
                    return !std::isspace(ch);
@@ -51,6 +52,17 @@ Manifest::Manifest(std::vector<std::string> data) {
         val = "";
       }
 
+      // trim
+      if (std::holds_alternative<std::string>(val)) {
+        std::string &str = std::get<std::string>(val);
+
+        // trim
+        str.erase(str.begin(),
+                  std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+                    return !std::isspace(ch);
+                  }));
+      }
+
       auto pair = std::make_pair(key, val);
       manifest_data.push_back(pair);
     }
@@ -58,21 +70,20 @@ Manifest::Manifest(std::vector<std::string> data) {
 }
 
 std::optional<Manifest::value> Manifest::operator[](std::string key) {
-    for (auto &d : manifest_data) {
-        if (d.first == key) {
-            return d.second;
-        }
+  for (auto &d : manifest_data) {
+    if (d.first == key) {
+      return d.second;
     }
-    return std::nullopt;
+  }
+  return std::nullopt;
 }
 
-
 void Manifest::set(std::string key, value val) {
-    for (auto &d : manifest_data) {
-        if (d.first == key) {
-            d.second = val;
-            return;
-        }
+  for (auto &d : manifest_data) {
+    if (d.first == key) {
+      d.second = val;
+      return;
     }
-    manifest_data.push_back(std::make_pair(key, val));
+  }
+  manifest_data.push_back(std::make_pair(key, val));
 }
